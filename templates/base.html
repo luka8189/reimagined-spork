@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %} - 员工管理系统</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        /* 移动端导航按钮 */
+        .mobile-nav-toggle {
+            display: none;
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1060;
+            background: #0d6efd;
+            color: white;
+            border: none;
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+        }
+
+        /* 侧边栏样式 */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: 250px;
+            background-color: #0d6efd;
+            padding-top: 1rem;
+            z-index: 1000;
+            transition: transform 0.3s ease-in-out;
+        }
+        
+        .sidebar .nav-link {
+            color: rgba(255, 255, 255, 0.85);
+            padding: 0.8rem 1rem;
+            margin: 0.2rem 0;
+            border-radius: 0.375rem;
+        }
+        
+        .sidebar .nav-link:hover {
+            color: white;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .sidebar .nav-link.active {
+            color: white;
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        /* 主内容区样式 */
+        .main-content {
+            {% if session.get('logged_in') %}margin-left: 250px;{% endif %}
+            padding: 2rem;
+            min-height: 100vh;
+            transition: margin-left 0.3s ease-in-out;
+        }
+        
+        /* 品牌标题样式 */
+        .brand-title {
+            color: white;
+            font-size: 1.5rem;
+            padding: 1rem;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        
+        /* 下拉菜单样式 */
+        .dropdown-menu {
+            margin-top: 0;
+        }
+        
+        /* 闪现消息样式 */
+        .flash-messages {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1050;
+        }
+        
+        .alert {
+            margin-bottom: 0.5rem;
+        }
+
+        /* 移动端响应式设计 */
+        @media (max-width: 768px) {
+            .mobile-nav-toggle {
+                display: block;
+            }
+
+            .sidebar {
+                transform: translateX(-100%);
+                width: 100%;
+                padding-top: 4rem;
+            }
+
+            .sidebar.show {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0 !important;
+                padding: 1rem;
+                padding-top: 4rem;
+            }
+
+            .brand-title {
+                font-size: 1.2rem;
+                padding: 0.5rem;
+            }
+
+            .nav-link {
+                font-size: 1.1rem;
+                padding: 1rem !important;
+            }
+
+            .flash-messages {
+                width: calc(100% - 2rem);
+            }
+
+            /* 改进移动端表格显示 */
+            .table-responsive {
+                margin: 0 -1rem;
+            }
+
+            /* 改进移动端表单显示 */
+            .form-floating > label {
+                padding: 0.5rem;
+            }
+
+            .form-control {
+                height: calc(3rem + 2px);
+            }
+
+            /* 改进移动端按钮显示 */
+            .btn {
+                padding: 0.75rem 1rem;
+            }
+
+            .d-grid .btn {
+                width: 100%;
+            }
+        }
+    </style>
+    
+    {% block styles %}{% endblock %}
+</head>
+<body>
+    {% if session.get('logged_in') %}
+    <!-- 移动端导航按钮 -->
+    <button class="mobile-nav-toggle" type="button" aria-label="Toggle navigation">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- 侧边栏 -->
+    <nav class="sidebar">
+        <div class="brand-title">
+            <i class="fas fa-building"></i>
+            员工管理系统
+        </div>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}">
+                    <i class="fas fa-home me-2"></i>首页
+                </a>
+            </li>
+            {% if session.get('is_super_admin') %}
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}">
+                    <i class="fas fa-chart-bar me-2"></i>系统仪表盘
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'system_monitor' %}active{% endif %}" href="{{ url_for('system_monitor') }}">
+                    <i class="fas fa-desktop me-2"></i>系统监控
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'system_logs' %}active{% endif %}" href="{{ url_for('system_logs') }}">
+                    <i class="fas fa-clipboard-list me-2"></i>系统日志
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'alert_config' %}active{% endif %}" href="{{ url_for('alert_config') }}">
+                    <i class="fas fa-bell me-2"></i>警报配置
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'performance_report' %}active{% endif %}" href="{{ url_for('performance_report') }}">
+                    <i class="fas fa-tachometer-alt me-2"></i>性能报告
+                </a>
+            </li>
+            {% endif %}
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'add_employee' %}active{% endif %}" href="{{ url_for('add_employee') }}">
+                    <i class="fas fa-user-plus me-2"></i>添加员工
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'batch_attendance' %}active{% endif %}" href="{{ url_for('batch_attendance') }}">
+                    <i class="fas fa-calendar-check me-2"></i>批量考勤
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'attendance_calendar' %}active{% endif %}" href="{{ url_for('attendance_calendar') }}">
+                    <i class="fas fa-calendar-alt me-2"></i>考勤日历
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'manage_holidays' %}active{% endif %}" href="{{ url_for('manage_holidays') }}">
+                    <i class="fas fa-umbrella-beach me-2"></i>假期管理
+                </a>
+            </li>
+            <li class="nav-item mt-auto">
+                <a class="nav-link" href="{{ url_for('logout') }}">
+                    <i class="fas fa-sign-out-alt me-2"></i>退出登录
+                </a>
+            </li>
+        </ul>
+    </nav>
+    {% endif %}
+
+    <!-- 主内容区 -->
+    <main class="main-content">
+        <!-- 闪现消息 -->
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for message in messages %}
+                        <div class="alert alert-info alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- 移动端导航菜单控制 -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const navToggle = document.querySelector('.mobile-nav-toggle');
+        const sidebar = document.querySelector('.sidebar');
+        const mainContent = document.querySelector('.main-content');
+
+        if (navToggle && sidebar) {
+            navToggle.addEventListener('click', function() {
+                sidebar.classList.toggle('show');
+                navToggle.querySelector('i').classList.toggle('fa-bars');
+                navToggle.querySelector('i').classList.toggle('fa-times');
+            });
+
+            // 点击主内容区域时关闭导航菜单
+            mainContent.addEventListener('click', function() {
+                if (sidebar.classList.contains('show')) {
+                    sidebar.classList.remove('show');
+                    navToggle.querySelector('i').classList.add('fa-bars');
+                    navToggle.querySelector('i').classList.remove('fa-times');
+                }
+            });
+
+            // 点击导航链接后关闭菜单
+            sidebar.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', function() {
+                    if (window.innerWidth <= 768) {
+                        sidebar.classList.remove('show');
+                        navToggle.querySelector('i').classList.add('fa-bars');
+                        navToggle.querySelector('i').classList.remove('fa-times');
+                    }
+                });
+            });
+        }
+    });
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html> 

@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>超级管理员仪表板</h2>
+    
+    <!-- 统计卡片 -->
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">总员工数</h5>
+                    <h2 class="card-text">{{ total_employees }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">今日考勤率</h5>
+                    <h2 class="card-text">{{ attendance_rate }}%</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-warning text-dark">
+                <div class="card-body">
+                    <h5 class="card-title">未还借款总额</h5>
+                    <h2 class="card-text">¥{{ "%.2f"|format(total_unpaid_loans) }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 管理员账户列表 -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <h4>管理员账户</h4>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>用户名</th>
+                            <th>店铺名称</th>
+                            <th>邮箱</th>
+                            <th>创建时间</th>
+                            <th>最后登录</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for admin in admins %}
+                        <tr>
+                            <td>
+                                <a href="{{ url_for('admin_account_details', admin_id=admin.id) }}" class="text-primary">
+                                    {{ admin.username }}
+                                </a>
+                            </td>
+                            <td>{{ admin.store_name }}</td>
+                            <td>{{ admin.email or '未设置' }}</td>
+                            <td>{{ admin.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>{{ admin.last_login.strftime('%Y-%m-%d %H:%M') if admin.last_login else '从未登录' }}</td>
+                            <td>
+                                <span class="badge {% if admin.is_active %}badge-success{% else %}badge-danger{% endif %}">
+                                    {{ '启用' if admin.is_active else '禁用' }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <form action="{{ url_for('toggle_admin_status', admin_id=admin.id) }}" method="post" class="d-inline">
+                                        <button type="submit" class="btn btn-sm {% if admin.is_active %}btn-warning{% else %}btn-success{% endif %}">
+                                            {{ '禁用' if admin.is_active else '启用' }}
+                                        </button>
+                                    </form>
+                                    <form action="{{ url_for('delete_admin', admin_id=admin.id) }}" method="post" class="d-inline ml-2" 
+                                          onsubmit="return confirm('确定要删除此管理员账户吗？此操作不可恢复。')">
+                                        <button type="submit" class="btn btn-sm btn-danger">删除</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 系统监控链接 -->
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <a href="{{ url_for('system_monitor') }}" class="btn btn-info btn-block">
+                <i class="fas fa-desktop"></i> 系统监控
+            </a>
+        </div>
+        <div class="col-md-4">
+            <a href="{{ url_for('system_logs') }}" class="btn btn-secondary btn-block">
+                <i class="fas fa-list"></i> 系统日志
+            </a>
+        </div>
+        <div class="col-md-4">
+            <a href="{{ url_for('alert_config') }}" class="btn btn-warning btn-block">
+                <i class="fas fa-bell"></i> 警报配置
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %} 

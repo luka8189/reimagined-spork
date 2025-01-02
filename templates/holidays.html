@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}假期管理{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- 添加假期表单 -->
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-plus me-2"></i>添加假期
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" class="needs-validation" novalidate>
+                        <div class="mb-3">
+                            <label class="form-label">日期</label>
+                            <input type="date" class="form-control" name="date" required>
+                            <div class="invalid-feedback">请选择日期</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">假期名称</label>
+                            <input type="text" class="form-control" name="name" required 
+                                   placeholder="例如：元旦、春节、清明节等">
+                            <div class="invalid-feedback">请输入假期名称</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">备注</label>
+                            <textarea class="form-control" name="note" rows="3" 
+                                    placeholder="可选：添加假期相关说明"></textarea>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>保存
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 假期列表 -->
+        <div class="col-md-8 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-calendar-alt me-2"></i>假期列表
+                    </h5>
+                    <span class="badge bg-light text-primary">共 {{ holidays|length }} 个假期</span>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>日期</th>
+                                    <th>名称</th>
+                                    <th>备注</th>
+                                    <th style="width: 100px;">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for holiday in holidays %}
+                                <tr>
+                                    <td>{{ holiday.date.strftime('%Y-%m-%d') }}</td>
+                                    <td>
+                                        <span class="badge bg-info">{{ holiday.name }}</span>
+                                    </td>
+                                    <td>{{ holiday.note or '-' }}</td>
+                                    <td>
+                                        <form method="POST" action="{{ url_for('delete_holiday', holiday_id=holiday.id) }}" 
+                                              class="d-inline">
+                                            <button type="submit" 
+                                                    class="btn btn-outline-danger btn-sm" 
+                                                    onclick="return confirm('确定要删除这个假期吗？')"
+                                                    data-bs-toggle="tooltip"
+                                                    title="删除假期">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                {% if not holidays %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">
+                                        <i class="fas fa-calendar-times fa-2x mb-2"></i>
+                                        <p class="mb-0">暂无假期记录</p>
+                                    </td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 表单验证
+(function () {
+    'use strict'
+    var forms = document.querySelectorAll('.needs-validation')
+    Array.prototype.slice.call(forms).forEach(function (form) {
+        form.addEventListener('submit', function (event) {
+            if (!form.checkValidity()) {
+                event.preventDefault()
+                event.stopPropagation()
+            }
+            form.classList.add('was-validated')
+        }, false)
+    })
+})()
+
+// 初始化工具提示
+document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+})
+</script>
+{% endblock %} 

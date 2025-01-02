@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+
+{% block title %}工资结算{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2><i class="fas fa-money-check-alt"></i> 工资结算</h2>
+        </div>
+        <div class="col-md-6 text-end">
+            <button type="button" class="btn btn-success" onclick="calculateAll()">
+                <i class="fas fa-calculator"></i> 一键计算
+            </button>
+            <a href="{{ url_for('export_salary') }}" class="btn btn-primary">
+                <i class="fas fa-file-excel"></i> 导出工资表
+            </a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white">
+            <form class="row g-3" method="get">
+                <div class="col-md-4">
+                    <label for="year" class="form-label">年份</label>
+                    <select class="form-select" id="year" name="year">
+                        {% for y in range(current_year-1, current_year+1) %}
+                        <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="month" class="form-label">月份</label>
+                    <select class="form-select" id="month" name="month">
+                        {% for m in range(1, 13) %}
+                        <option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ m }}月</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search"></i> 查询
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-primary">
+                        <tr>
+                            <th>工号</th>
+                            <th>姓名</th>
+                            <th>职位</th>
+                            <th>出勤天数</th>
+                            <th>请假天数</th>
+                            <th>基本工资</th>
+                            <th>加班工资</th>
+                            <th>请假扣款</th>
+                            <th>借款扣除</th>
+                            <th>实发工资</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for salary in salaries %}
+                        <tr>
+                            <td>{{ salary.employee.id }}</td>
+                            <td>{{ salary.employee.name }}</td>
+                            <td>{{ salary.employee.position }}</td>
+                            <td>{{ salary.work_days }}</td>
+                            <td>{{ salary.leave_days }}</td>
+                            <td>¥{{ "%.2f"|format(salary.base_salary) }}</td>
+                            <td>¥{{ "%.2f"|format(salary.overtime_pay) }}</td>
+                            <td>¥{{ "%.2f"|format(salary.leave_deduction) }}</td>
+                            <td>¥{{ "%.2f"|format(salary.loan_deduction) }}</td>
+                            <td class="fw-bold">¥{{ "%.2f"|format(salary.net_salary) }}</td>
+                            <td>
+                                <span class="badge {% if salary.status == '已发放' %}bg-success{% else %}bg-warning{% endif %}">
+                                    {{ salary.status }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-info" 
+                                            onclick="showDetail({{ salary.id }})" title="详情">
+                                        <i class="fas fa-info-circle"></i>
+                                    </button>
+                                    {% if salary.status != '已发放' %}
+                                    <button type="button" class="btn btn-success" 
+                                            onclick="confirmPay({{ salary.id }}, '{{ salary.employee.name }}')" title="发放">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="table-light">
+                        <tr>
+                            <td colspan="5" class="text-end fw-bold">合计：</td>
+                            <td>¥{{ "%.2f"|format(total_base_salary) }}</td>
+                            <td>¥{{ "%.2f"|format(total_overtime_pay) }}</td>
+                            <td>¥{{ "%.2f"|format(total_leave_deduction) }}</td>
+                            <td>¥{{ "%.2f"|format(total_loan_deduction) }}</td>
+                            <td class="fw-bold">¥{{ "%.2f"|format(total_net_salary) }}</td>
+                            <td colspan="2"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 工资详情模态框 -->
+<div class="modal fade" id="salaryDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">工资详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>基本信息</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <th width="120">姓名：</th>
+                                <td id="detail-name"></td>
+                            </tr>
+                            <tr>
+                                <th>职位：</th>
+                                <td id="detail-position"></td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>考勤信息</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <th width="120">出勤天数：</th>
+                                <td id="detail-work-days"></td>
+                            </tr>
+                            <tr>
+                                <th>请假天数：</th>
+                                <td id="detail-leave-days"></td>
+                            </tr>
+                            <tr>
+                                <th>加班小时：</th>
+                                <td id="detail-overtime-hours"></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                <hr>
+                <div class="row">
+                    <div class="col-md-12">
+                        <h6>工资明细</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <th width="120">基本工资：</th>
+                                <td id="detail-base-salary"></td>
+                            </tr>
+                            <tr>
+                                <th>加班工资：</th>
+                                <td id="detail-overtime-pay"></td>
+                            </tr>
+                            <tr>
+                                <th>请假扣款：</th>
+                                <td id="detail-leave-deduction" class="text-danger"></td>
+                            </tr>
+                            <tr>
+                                <th>借款扣除：</th>
+                                <td id="detail-loan-deduction" class="text-danger"></td>
+                            </tr>
+                            <tr class="table-light">
+                                <th>实发工资：</th>
+                                <td id="detail-net-salary" class="fw-bold"></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12">
+                        <h6>备注</h6>
+                        <p id="detail-note" class="text-muted"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 工资发放确认模态框 -->
+<div class="modal fade" id="payConfirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">确认发放工资</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>确定要发放 <strong id="employeeName"></strong> 的工资吗？此操作不可撤销。</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <form id="payForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-success">确认发放</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 一键计算所有工资
+function calculateAll() {
+    if (confirm('确定要重新计算本月所有员工的工资吗？')) {
+        fetch('/calculate_all_salary', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                year: document.getElementById('year').value,
+                month: document.getElementById('month').value
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('计算失败：' + data.message);
+            }
+        });
+    }
+}
+
+// 显示工资详情
+function showDetail(salaryId) {
+    fetch('/salary_detail/' + salaryId)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('detail-name').textContent = data.employee.name;
+            document.getElementById('detail-position').textContent = data.employee.position;
+            document.getElementById('detail-work-days').textContent = data.work_days + '天';
+            document.getElementById('detail-leave-days').textContent = data.leave_days + '天';
+            document.getElementById('detail-overtime-hours').textContent = data.overtime_hours + '小时';
+            document.getElementById('detail-base-salary').textContent = '¥' + data.base_salary.toFixed(2);
+            document.getElementById('detail-overtime-pay').textContent = '¥' + data.overtime_pay.toFixed(2);
+            document.getElementById('detail-leave-deduction').textContent = '¥' + data.leave_deduction.toFixed(2);
+            document.getElementById('detail-loan-deduction').textContent = '¥' + data.loan_deduction.toFixed(2);
+            document.getElementById('detail-net-salary').textContent = '¥' + data.net_salary.toFixed(2);
+            document.getElementById('detail-note').textContent = data.note || '无';
+            
+            new bootstrap.Modal(document.getElementById('salaryDetailModal')).show();
+        });
+}
+
+// 确认发放工资
+function confirmPay(salaryId, employeeName) {
+    document.getElementById('employeeName').textContent = employeeName;
+    document.getElementById('payForm').action = '/pay_salary/' + salaryId;
+    new bootstrap.Modal(document.getElementById('payConfirmModal')).show();
+}
+</script>
+{% endblock %} 

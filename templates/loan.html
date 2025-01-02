@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}{{ employee.name }}的借款记录{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2><i class="fas fa-money-bill"></i> {{ employee.name }}的借款记录</h2>
+        </div>
+        <div class="col-md-6 text-end">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addLoanModal">
+                <i class="fas fa-plus"></i> 新增借款
+            </button>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">未还借款总额</h5>
+                    <h3 class="mb-0">¥{{ "%.2f"|format(employee.get_total_unpaid_loans()) }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-primary">
+                        <tr>
+                            <th>借款日期</th>
+                            <th>金额</th>
+                            <th>用途</th>
+                            <th>状态</th>
+                            <th>还款日期</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for loan in employee.loans %}
+                        <tr>
+                            <td>{{ loan.loan_date.strftime('%Y-%m-%d') }}</td>
+                            <td>¥{{ "%.2f"|format(loan.amount) }}</td>
+                            <td>{{ loan.purpose or '-' }}</td>
+                            <td>
+                                <span class="badge {% if loan.status == '已还' %}bg-success{% else %}bg-warning{% endif %}">
+                                    {{ loan.status }}
+                                </span>
+                            </td>
+                            <td>{{ loan.repayment_date.strftime('%Y-%m-%d') if loan.repayment_date else '-' }}</td>
+                            <td>
+                                {% if loan.status == '未还' %}
+                                <form action="{{ url_for('repay_loan', loan_id=loan.id) }}" method="POST" style="display: inline;">
+                                    <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('确认标记为已还款？')">
+                                        <i class="fas fa-check"></i> 确认还款
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 新增借款模态框 -->
+<div class="modal fade" id="addLoanModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">新增借款</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" class="needs-validation" novalidate>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="amount" class="form-label">借款金额</label>
+                        <div class="input-group">
+                            <span class="input-group-text">¥</span>
+                            <input type="number" class="form-control" id="amount" name="amount" step="0.01" min="0" required>
+                            <div class="invalid-feedback">
+                                请输入有效的借款金额
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="purpose" class="form-label">借款用途</label>
+                        <textarea class="form-control" id="purpose" name="purpose" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 表单验证
+(function () {
+    'use strict'
+    var forms = document.querySelectorAll('.needs-validation')
+    Array.prototype.slice.call(forms).forEach(function (form) {
+        form.addEventListener('submit', function (event) {
+            if (!form.checkValidity()) {
+                event.preventDefault()
+                event.stopPropagation()
+            }
+            form.classList.add('was-validated')
+        }, false)
+    })
+})()
+</script>
+{% endblock %} 

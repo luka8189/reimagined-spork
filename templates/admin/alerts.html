@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 顶部导航栏 -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-bell me-2"></i>警报配置</h2>
+        <div class="btn-group">
+            <button type="button" class="btn btn-outline-primary" onclick="window.location.href='{{ url_for('system_monitor') }}'">
+                <i class="fas fa-arrow-left me-1"></i>返回监控
+            </button>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAlertModal">
+                <i class="fas fa-plus me-1"></i>添加警报
+            </button>
+        </div>
+    </div>
+
+    <!-- 搜索和过滤 -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" class="form-control" id="searchInput" placeholder="搜索警报..." onkeyup="filterAlerts()">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <select class="form-select" id="typeFilter" onchange="filterAlerts()">
+                        <option value="">所有类型</option>
+                        <option value="CPU">CPU使用率</option>
+                        <option value="MEMORY">内存使用率</option>
+                        <option value="DISK">磁盘使用率</option>
+                        <option value="NETWORK">网络带宽</option>
+                        <option value="SECURITY">安全事件</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <select class="form-select" id="statusFilter" onchange="filterAlerts()">
+                        <option value="">所有状态</option>
+                        <option value="enabled">已启用</option>
+                        <option value="disabled">已禁用</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 警报列表 -->
+    <div class="row" id="alertsList">
+        {% for alert in alerts %}
+        <div class="col-md-4 mb-4 alert-item" 
+             data-name="{{ alert.name|lower }}"
+             data-type="{{ alert.type }}"
+             data-status="{{ 'enabled' if alert.enabled else 'disabled' }}">
+            <div class="card shadow-sm h-100 border-{{ 'success' if alert.enabled else 'secondary' }}">
+                <div class="card-header d-flex justify-content-between align-items-center bg-{{ 'success' if alert.enabled else 'secondary' }} bg-opacity-10">
+                    <h5 class="mb-0">
+                        <i class="fas fa-{{ 'microchip' if alert.type == 'CPU' else 'memory' if alert.type == 'MEMORY' else 'hdd' if alert.type == 'DISK' else 'network-wired' if alert.type == 'NETWORK' else 'exclamation-triangle' }} me-2"></i>
+                        {{ alert.name }}
+                    </h5>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="editAlert({{ alert.id }})" title="编辑">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-{{ 'success' if not alert.enabled else 'secondary' }}" 
+                                onclick="toggleAlert({{ alert.id }}, {{ alert.enabled|tojson }})" 
+                                title="{{ '启用' if not alert.enabled else '禁用' }}">
+                            <i class="fas fa-{{ 'play' if not alert.enabled else 'pause' }}"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteAlert({{ alert.id }})" title="删除">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <small class="text-muted">类型:</small>
+                        <div class="badge bg-info">{{ alert.type }}</div>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted">阈值:</small>
+                        <div class="h4 mb-0">
+                            {{ alert.threshold }}{{ '%' if alert.type in ['CPU', 'MEMORY', 'DISK'] else 'Mbps' if alert.type == 'NETWORK' else '' }}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted">通知邮箱:</small>
+                        <div class="text-truncate">
+                            <i class="fas fa-envelope me-1"></i>
+                            {{ alert.email }}
+                        </div>
+                    </div>
+                    <div>
+                        <small class="text-muted">状态:</small>
+                        <div>
+                            <span class="badge bg-{{ 'success' if alert.enabled else 'secondary' }}">
+                                {{ '启用' if alert.enabled else '禁用' }}
+                            </span>
+                            {% if alert.last_triggered %}
+                            <small class="text-muted ms-2">
+                                上次触发: {{ alert.last_triggered.strftime('%Y-%m-%d %H:%M') }}
+                            </small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- 无数据提示 -->
+    <div id="noResults" class="text-center py-5 d-none">
+        <i class="fas fa-search fa-3x text-muted mb-3"></i>
+        <h5 class="text-muted">未找到匹配的警报</h5>
+    </div>
+</div>
+
+<!-- 添加/编辑警报模态框 -->
+<div class="modal fade" id="addAlertModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">添加警报</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="alertForm" action="{{ url_for('add_alert') }}" method="POST" class="needs-validation" novalidate>
+                    <div class="mb-3">
+                        <label class="form-label">名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="name" required
+                               pattern="[A-Za-z0-9\u4e00-\u9fa5_-]{2,50}"
+                               title="2-50个字符，可包含中英文、数字、下划线和连字符">
+                        <div class="invalid-feedback">请输入有效的警报名称</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">类型 <span class="text-danger">*</span></label>
+                        <select class="form-select" name="type" required>
+                            <option value="">请选择类型</option>
+                            <option value="CPU">CPU使用率</option>
+                            <option value="MEMORY">内存使用率</option>
+                            <option value="DISK">磁盘使用率</option>
+                            <option value="NETWORK">网络带宽</option>
+                            <option value="SECURITY">安全事件</option>
+                        </select>
+                        <div class="invalid-feedback">请选择警报类型</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">阈值 <span class="text-danger">*</span></label>
+                        <div class="input-group has-validation">
+                            <input type="number" class="form-control" name="threshold" required
+                                   min="0" max="100" step="0.1">
+                            <span class="input-group-text">%</span>
+                            <div class="invalid-feedback">请输入0-100之间的数值</div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">通知邮箱 <span class="text-danger">*</span></label>
+                        <input type="email" class="form-control" name="email" required>
+                        <div class="invalid-feedback">请输入有效的邮箱地址</div>
+                    </div>
+                    <div class="form-check form-switch mb-3">
+                        <input type="checkbox" class="form-check-input" name="enabled" checked>
+                        <label class="form-check-label">启用警报</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="submit" form="alertForm" class="btn btn-primary">
+                    <i class="fas fa-save me-1"></i>保存
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 表单验证
+(function () {
+    'use strict'
+    const forms = document.querySelectorAll('.needs-validation');
+    Array.from(forms).forEach(form => {
+        form.addEventListener('submit', event => {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    });
+})();
+
+// 编辑警报
+function editAlert(alertId) {
+    fetch(`{{ url_for('get_alert') }}?id=${alertId}`)
+        .then(response => response.json())
+        .then(alert => {
+            const form = document.getElementById('alertForm');
+            form.action = `{{ url_for('edit_alert') }}?id=${alertId}`;
+            form.name.value = alert.name;
+            form.type.value = alert.type;
+            form.threshold.value = alert.threshold;
+            form.email.value = alert.email;
+            form.enabled.checked = alert.enabled;
+            
+            document.getElementById('modalTitle').textContent = '编辑警报';
+            const modal = new bootstrap.Modal(document.getElementById('addAlertModal'));
+            modal.show();
+        });
+}
+
+// 删除警报
+function deleteAlert(alertId) {
+    Swal.fire({
+        title: '确定要删除这个警报吗？',
+        text: "此操作无法撤销！",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`{{ url_for('delete_alert') }}?id=${alertId}`, { method: 'POST' })
+                .then(() => {
+                    Swal.fire('已删除', '警报已成功删除', 'success')
+                        .then(() => window.location.reload());
+                });
+        }
+    });
+}
+
+// 切换警报状态
+function toggleAlert(alertId, currentStatus) {
+    const newStatus = !currentStatus;
+    fetch(`{{ url_for('toggle_alert') }}?id=${alertId}&enabled=${newStatus}`, { method: 'POST' })
+        .then(() => window.location.reload());
+}
+
+// 根据警报类型更新阈值单位
+document.querySelector('select[name="type"]').addEventListener('change', function() {
+    const unit = this.value === 'NETWORK' ? 'Mbps' : '%';
+    document.querySelector('.input-group-text').textContent = unit;
+    
+    // 更新阈值输入验证规则
+    const thresholdInput = document.querySelector('input[name="threshold"]');
+    if (this.value === 'NETWORK') {
+        thresholdInput.min = '0';
+        thresholdInput.max = '10000';
+        thresholdInput.step = '1';
+    } else {
+        thresholdInput.min = '0';
+        thresholdInput.max = '100';
+        thresholdInput.step = '0.1';
+    }
+});
+
+// 模态框重置
+document.getElementById('addAlertModal').addEventListener('hidden.bs.modal', function () {
+    const form = document.getElementById('alertForm');
+    form.reset();
+    form.classList.remove('was-validated');
+    form.action = "{{ url_for('add_alert') }}";
+    document.getElementById('modalTitle').textContent = '添加警报';
+});
+
+// 过滤警报
+function filterAlerts() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const typeFilter = document.getElementById('typeFilter').value;
+    const statusFilter = document.getElementById('statusFilter').value;
+    
+    const alerts = document.getElementsByClassName('alert-item');
+    let visibleCount = 0;
+    
+    Array.from(alerts).forEach(alert => {
+        const name = alert.dataset.name;
+        const type = alert.dataset.type;
+        const status = alert.dataset.status;
+        
+        const matchesSearch = name.includes(searchTerm);
+        const matchesType = !typeFilter || type === typeFilter;
+        const matchesStatus = !statusFilter || status === statusFilter;
+        
+        if (matchesSearch && matchesType && matchesStatus) {
+            alert.style.display = '';
+            visibleCount++;
+        } else {
+            alert.style.display = 'none';
+        }
+    });
+    
+    // 显示/隐藏无数据提示
+    document.getElementById('noResults').classList.toggle('d-none', visibleCount > 0);
+}
+</script>
+{% endblock %} 

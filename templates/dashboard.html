@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block title %}系统仪表盘{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 系统状态卡片 -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">CPU 使用率</h6>
+                            <h2 class="mt-2 mb-0">{{ cpu_percent }}%</h2>
+                        </div>
+                        <i class="fas fa-microchip fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">内存使用率</h6>
+                            <h2 class="mt-2 mb-0">{{ memory.percent }}%</h2>
+                        </div>
+                        <i class="fas fa-memory fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">磁盘使用率</h6>
+                            <h2 class="mt-2 mb-0">{{ disk.percent }}%</h2>
+                        </div>
+                        <i class="fas fa-hdd fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">系统运行时间</h6>
+                            <h2 class="mt-2 mb-0">{{ uptime }}</h2>
+                        </div>
+                        <i class="fas fa-clock fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 性能监控图表 -->
+    <div class="row g-3">
+        <!-- CPU和内存趋势图 -->
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">系统性能趋势（最近24小时）</h6>
+                </div>
+                <div class="card-body">
+                    <div style="height: 300px;">
+                        <canvas id="performanceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 进程列表 -->
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">活跃进程 Top 10</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive" style="height: 300px;">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>PID</th>
+                                    <th>进程名</th>
+                                    <th>CPU%</th>
+                                    <th>内存%</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for proc in processes %}
+                                <tr>
+                                    <td>{{ proc.pid }}</td>
+                                    <td>{{ proc.name }}</td>
+                                    <td>{{ "%.1f"|format(proc.cpu_percent) }}%</td>
+                                    <td>{{ "%.1f"|format(proc.memory_percent) }}%</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 系统日志 -->
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">系统日志</h6>
+                    <button class="btn btn-sm btn-outline-primary" onclick="refreshLogs()">
+                        <i class="fas fa-sync-alt"></i> 刷新
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="log-container" style="height: 300px; overflow-y: auto;">
+                        <pre class="mb-0"><code>{{ logs|join('') }}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// 设置全局字体
+Chart.defaults.font.family = "'Helvetica Neue', 'Helvetica', 'Arial', sans-serif";
+Chart.defaults.font.size = 13;
+
+// 性能趋势图
+const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+new Chart(performanceCtx, {
+    type: 'line',
+    data: {
+        labels: {{ timestamps|tojson }},
+        datasets: [{
+            label: 'CPU使用率',
+            data: {{ cpu_data|tojson }},
+            borderColor: '#0d6efd',
+            backgroundColor: 'rgba(13, 110, 253, 0.1)',
+            borderWidth: 2,
+            tension: 0.3,
+            fill: true
+        }, {
+            label: '内存使用率',
+            data: {{ memory_data|tojson }},
+            borderColor: '#198754',
+            backgroundColor: 'rgba(25, 135, 84, 0.1)',
+            borderWidth: 2,
+            tension: 0.3,
+            fill: true
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+            mode: 'index',
+            intersect: false
+        },
+        plugins: {
+            legend: {
+                position: 'top'
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                max: 100,
+                ticks: {
+                    callback: function(value) {
+                        return value + '%';
+                    }
+                }
+            }
+        }
+    }
+});
+
+// 刷新日志
+function refreshLogs() {
+    fetch('/system_logs')
+        .then(response => response.text())
+        .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const logContent = doc.querySelector('.log-container code').textContent;
+            document.querySelector('.log-container code').textContent = logContent;
+        });
+}
+
+// 自动刷新
+setInterval(() => {
+    location.reload();
+}, 60000); // 每分钟刷新一次
+</script>
+
+<style>
+.log-container {
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    padding: 1rem;
+}
+
+.log-container pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.log-container code {
+    color: #495057;
+    font-family: 'Courier New', Courier, monospace;
+}
+</style>
+{% endblock %} 

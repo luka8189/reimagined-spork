@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}{{ employee.name }} - 考勤日历{% endblock %}
+
+{% block styles %}
+<link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css' rel='stylesheet' />
+<style>
+.fc {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,.1);
+}
+
+.fc-event {
+    cursor: pointer;
+    margin: 2px 0;
+}
+
+.fc-event-title {
+    padding: 2px 4px;
+    white-space: normal;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.fc-day-today {
+    background: rgba(0,123,255,.1) !important;
+}
+
+.fc-toolbar-title {
+    font-size: 1.25rem !important;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-white py-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">{{ employee.name }} - 考勤日历</h5>
+                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-arrow-left me-1"></i>返回
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+                    <div id="calendar"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+<!-- 详情模态框 -->
+<div class="modal fade" id="eventModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">考勤详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="eventDetails"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- FullCalendar Bundle -->
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.js'></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var calendarEl = document.getElementById('calendar');
+    var eventModal = new bootstrap.Modal(document.getElementById('eventModal'));
+    
+    var calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        height: 'auto',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth'
+        },
+        buttonText: {
+            today: '今天',
+            month: '月'
+        },
+        locale: 'zh-cn',
+        firstDay: 1,
+        events: function(info, successCallback, failureCallback) {
+            fetch("{{ url_for('get_employee_attendance', employee_id=employee.id) }}?" + 
+                 `start=${info.startStr}&end=${info.endStr}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    successCallback(data);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    failureCallback(error);
+                });
+        },
+        eventClick: function(info) {
+            const event = info.event;
+            const props = event.extendedProps;
+            
+            document.getElementById('eventDetails').innerHTML = `
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">日期</dt>
+                    <dd class="col-sm-8">${event.start.toLocaleDateString()}</dd>
+                    
+                    <dt class="col-sm-4">状态</dt>
+                    <dd class="col-sm-8">${props.status || props.name}</dd>
+                    
+                    ${props.hours ? `
+                    <dt class="col-sm-4">工作时长</dt>
+                    <dd class="col-sm-8">${props.hours}小时</dd>
+                    ` : ''}
+                    
+                    ${props.note ? `
+                    <dt class="col-sm-4">备注</dt>
+                    <dd class="col-sm-8">${props.note}</dd>
+                    ` : ''}
+                </dl>
+            `;
+            
+            eventModal.show();
+        },
+        eventDidMount: function(info) {
+            const props = info.event.extendedProps;
+            info.el.title = props.type === '考勤' ?
+                `状态：${props.status}\n` +
+                `工作时长：${props.hours}小时\n` +
+                (props.note ? `备注：${props.note}` : '') :
+                `假期：${props.name}\n` +
+                (props.note ? `备注：${props.note}` : '');
+        },
+        dayMaxEvents: true,
+        displayEventTime: false
+    });
+    
+    calendar.render();
+});
+</script>
+{% endblock %} 

@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <i class="fas fa-server me-2"></i>系统监控
+        </h2>
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i>返回
+        </a>
+    </div>
+
+    <!-- 实时状态卡片 -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title text-primary">
+                        <i class="fas fa-microchip me-2"></i>CPU 使用率
+                    </h5>
+                    <div class="d-flex align-items-center mt-3">
+                        <h2 class="mb-0">{{ "%.1f"|format(cpu_percent) }}%</h2>
+                        <div class="progress flex-grow-1 ms-3" style="height: 10px;">
+                            <div class="progress-bar {% if cpu_percent > 80 %}bg-danger{% elif cpu_percent > 60 %}bg-warning{% else %}bg-success{% endif %}" 
+                                 role="progressbar" 
+                                 style="width: {{ cpu_percent }}%">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title text-success">
+                        <i class="fas fa-memory me-2"></i>内存使用
+                    </h5>
+                    <div class="d-flex align-items-center mt-3">
+                        <h2 class="mb-0">{{ "%.1f"|format(memory.percent) }}%</h2>
+                        <div class="progress flex-grow-1 ms-3" style="height: 10px;">
+                            <div class="progress-bar {% if memory.percent > 80 %}bg-danger{% elif memory.percent > 60 %}bg-warning{% else %}bg-success{% endif %}" 
+                                 role="progressbar" 
+                                 style="width: {{ memory.percent }}%">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="small text-muted mt-2">
+                        已用: {{ "%.1f"|format(memory.used/1024/1024/1024) }} GB / 
+                        总计: {{ "%.1f"|format(memory.total/1024/1024/1024) }} GB
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title text-warning">
+                        <i class="fas fa-hdd me-2"></i>磁盘使用
+                    </h5>
+                    <div class="d-flex align-items-center mt-3">
+                        <h2 class="mb-0">{{ "%.1f"|format(disk.percent) }}%</h2>
+                        <div class="progress flex-grow-1 ms-3" style="height: 10px;">
+                            <div class="progress-bar {% if disk.percent > 80 %}bg-danger{% elif disk.percent > 60 %}bg-warning{% else %}bg-success{% endif %}" 
+                                 role="progressbar" 
+                                 style="width: {{ disk.percent }}%">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="small text-muted mt-2">
+                        已用: {{ "%.1f"|format(disk.used/1024/1024/1024) }} GB / 
+                        总计: {{ "%.1f"|format(disk.total/1024/1024/1024) }} GB
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title text-info">
+                        <i class="fas fa-clock me-2"></i>系统运行时间
+                    </h5>
+                    <div class="mt-3">
+                        <h2 class="mb-0">{{ uptime }}</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 进程列表 -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-tasks me-2"></i>活跃进程 (Top 10)
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>PID</th>
+                            <th>进程名</th>
+                            <th>CPU 使用率</th>
+                            <th>内存使用率</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for proc in processes %}
+                        <tr>
+                            <td>{{ proc.pid }}</td>
+                            <td>{{ proc.name }}</td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    {{ "%.1f"|format(proc.cpu_percent) }}%
+                                    <div class="progress flex-grow-1 ms-2" style="height: 5px;">
+                                        <div class="progress-bar" role="progressbar" 
+                                             style="width: {{ proc.cpu_percent }}%">
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    {{ "%.1f"|format(proc.memory_percent) }}%
+                                    <div class="progress flex-grow-1 ms-2" style="height: 5px;">
+                                        <div class="progress-bar bg-success" role="progressbar" 
+                                             style="width: {{ proc.memory_percent }}%">
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 性能图表 -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-line me-2"></i>CPU 使用率趋势
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="cpuChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-line me-2"></i>内存使用率趋势
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="memoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 自动刷新脚本 -->
+<script>
+// 每5秒自动刷新页面
+setTimeout(function() {
+    location.reload();
+}, 5000);
+
+// 性能图表
+document.addEventListener('DOMContentLoaded', function() {
+    const cpuCtx = document.getElementById('cpuChart').getContext('2d');
+    const memoryCtx = document.getElementById('memoryChart').getContext('2d');
+
+    new Chart(cpuCtx, {
+        type: 'line',
+        data: {
+            labels: {{ timestamps|tojson }},
+            datasets: [{
+                label: 'CPU 使用率',
+                data: {{ cpu_data|tojson }},
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100
+                }
+            }
+        }
+    });
+
+    new Chart(memoryCtx, {
+        type: 'line',
+        data: {
+            labels: {{ timestamps|tojson }},
+            datasets: [{
+                label: '内存使用率',
+                data: {{ memory_data|tojson }},
+                borderColor: 'rgb(255, 99, 132)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %} 

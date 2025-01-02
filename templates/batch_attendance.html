@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+
+{% block title %}批量考勤{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="fas fa-calendar-check me-2"></i>批量考勤管理
+            </h5>
+            <span class="badge bg-light text-primary">共 {{ employees|length }} 名员工</span>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('batch_attendance') }}" class="needs-validation" novalidate>
+                <!-- 日期选择 -->
+                <div class="row mb-4">
+                    <div class="col-md-5">
+                        <label class="form-label">开始日期</label>
+                        <input type="date" class="form-control" name="start_date" 
+                               value="{{ today.strftime('%Y-%m-%d') }}" required>
+                        <div class="invalid-feedback">请选择开始日期</div>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label">结束日期</label>
+                        <input type="date" class="form-control" name="end_date" 
+                               value="{{ today.strftime('%Y-%m-%d') }}" required>
+                        <div class="invalid-feedback">请选择结束日期</div>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label d-block">&nbsp;</label>
+                        <button type="button" class="btn btn-outline-primary w-100" onclick="selectAll()">
+                            <i class="fas fa-check-double me-2"></i>全选
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 员工列表 -->
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 50px;">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="selectAllCheckbox">
+                                    </div>
+                                </th>
+                                <th style="width: 80px;">工号</th>
+                                <th>姓名</th>
+                                <th>职位</th>
+                                <th>考勤状态</th>
+                                <th>工作时长</th>
+                                <th>备注</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for employee in employees %}
+                            <tr>
+                                <td>
+                                    <div class="form-check">
+                                        <input class="form-check-input employee-checkbox" 
+                                               type="checkbox" 
+                                               name="selected_employees" 
+                                               value="{{ employee.id }}">
+                                    </div>
+                                </td>
+                                <td>{{ employee.id }}</td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-circle me-2">{{ employee.name[0] }}</div>
+                                        {{ employee.name }}
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">{{ employee.position }}</span>
+                                </td>
+                                <td>
+                                    <select class="form-select form-select-sm" 
+                                            name="status_{{ employee.id }}"
+                                            disabled>
+                                        <option value="上班">上班</option>
+                                        <option value="请假">请假</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <input type="number" 
+                                           class="form-control form-control-sm" 
+                                           name="hours_{{ employee.id }}" 
+                                           value="8.0" 
+                                           step="0.5" 
+                                           min="0" 
+                                           max="24"
+                                           disabled>
+                                </td>
+                                <td>
+                                    <input type="text" 
+                                           class="form-control form-control-sm" 
+                                           name="note_{{ employee.id }}" 
+                                           placeholder="备注信息"
+                                           disabled>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% if not employees %}
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-4">
+                                    <i class="fas fa-users-slash fa-2x mb-2"></i>
+                                    <p class="mb-0">暂无员工记录</p>
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 提交按钮 -->
+                <div class="text-end mt-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>保存考勤记录
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+.avatar-circle {
+    width: 32px;
+    height: 32px;
+    background-color: #e9ecef;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: #495057;
+}
+
+.form-select:disabled,
+.form-control:disabled {
+    background-color: #e9ecef;
+    opacity: 0.8;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 表单验证
+(function () {
+    'use strict'
+    var forms = document.querySelectorAll('.needs-validation')
+    Array.prototype.slice.call(forms).forEach(function (form) {
+        form.addEventListener('submit', function (event) {
+            if (!form.checkValidity()) {
+                event.preventDefault()
+                event.stopPropagation()
+            }
+            form.classList.add('was-validated')
+        }, false)
+    })
+})()
+
+// 全选功能
+function selectAll() {
+    const mainCheckbox = document.getElementById('selectAllCheckbox');
+    mainCheckbox.checked = !mainCheckbox.checked;
+    toggleAllCheckboxes();
+}
+
+// 处理全选复选框
+document.getElementById('selectAllCheckbox').addEventListener('change', toggleAllCheckboxes);
+
+// 切换所有复选框状态
+function toggleAllCheckboxes() {
+    const mainCheckbox = document.getElementById('selectAllCheckbox');
+    const checkboxes = document.querySelectorAll('.employee-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = mainCheckbox.checked;
+        toggleRowInputs(checkbox);
+    });
+}
+
+// 监听每个员工的复选框变化
+document.querySelectorAll('.employee-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+        toggleRowInputs(this);
+        updateMainCheckbox();
+    });
+});
+
+// 切换行内输入框状态
+function toggleRowInputs(checkbox) {
+    const row = checkbox.closest('tr');
+    const inputs = row.querySelectorAll('select, input[type="number"], input[type="text"]');
+    inputs.forEach(input => {
+        input.disabled = !checkbox.checked;
+    });
+}
+
+// 更新主复选框状态
+function updateMainCheckbox() {
+    const mainCheckbox = document.getElementById('selectAllCheckbox');
+    const checkboxes = Array.from(document.querySelectorAll('.employee-checkbox'));
+    const allChecked = checkboxes.every(cb => cb.checked);
+    const someChecked = checkboxes.some(cb => cb.checked);
+    mainCheckbox.checked = allChecked;
+    mainCheckbox.indeterminate = someChecked && !allChecked;
+}
+
+// 日期验证
+document.querySelector('form').addEventListener('submit', function(event) {
+    const startDate = new Date(document.querySelector('input[name="start_date"]').value);
+    const endDate = new Date(document.querySelector('input[name="end_date"]').value);
+    
+    if (endDate < startDate) {
+        event.preventDefault();
+        alert('结束日期不能早于开始日期');
+    }
+    
+    const selectedEmployees = document.querySelectorAll('.employee-checkbox:checked');
+    if (selectedEmployees.length === 0) {
+        event.preventDefault();
+        alert('请至少选择一名员工');
+    }
+});
+</script>
+{% endblock %} 

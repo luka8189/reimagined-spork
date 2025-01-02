@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <i class="fas fa-file-alt me-2"></i>系统日志
+        </h2>
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i>返回
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-history me-2"></i>最近日志记录
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>时间</th>
+                            <th>级别</th>
+                            <th>消息</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        {% set log_parts = log.split(' - ') %}
+                        <tr>
+                            <td>{{ log_parts[0] }}</td>
+                            <td>
+                                <span class="badge {% if 'ERROR' in log %}bg-danger{% elif 'WARNING' in log %}bg-warning{% else %}bg-info{% endif %}">
+                                    {{ log_parts[1] }}
+                                </span>
+                            </td>
+                            <td>{{ log_parts[2] }}</td>
+                        </tr>
+                        {% endfor %}
+                        {% if not logs %}
+                        <tr>
+                            <td colspan="3" class="text-center text-muted py-4">
+                                <i class="fas fa-file-alt fa-2x mb-2"></i>
+                                <p class="mb-0">暂无日志记录</p>
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}性能报告{% endblock %}
+
+{% block styles %}
+<!-- Chart.js -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.css">
+<style>
+    .performance-card {
+        height: 100%;
+    }
+    .performance-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #0d6efd;
+    }
+    .performance-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+    .chart-container {
+        position: relative;
+        height: 300px;
+        width: 100%;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- 性能概览 -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card performance-card">
+                <div class="card-body text-center">
+                    <div class="performance-value">{{ performance_data.cpu_usage[-1] }}%</div>
+                    <div class="performance-label">CPU 使用率</div>
+                    <div class="progress mt-2">
+                        <div class="progress-bar {% if performance_data.cpu_usage[-1] > 80 %}bg-danger{% elif performance_data.cpu_usage[-1] > 60 %}bg-warning{% else %}bg-success{% endif %}" 
+                             role="progressbar" 
+                             style="width: {{ performance_data.cpu_usage[-1] }}%">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card performance-card">
+                <div class="card-body text-center">
+                    <div class="performance-value">{{ performance_data.memory_usage[-1] }}%</div>
+                    <div class="performance-label">内存使用率</div>
+                    <div class="progress mt-2">
+                        <div class="progress-bar {% if performance_data.memory_usage[-1] > 80 %}bg-danger{% elif performance_data.memory_usage[-1] > 60 %}bg-warning{% else %}bg-success{% endif %}" 
+                             role="progressbar" 
+                             style="width: {{ performance_data.memory_usage[-1] }}%">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card performance-card">
+                <div class="card-body text-center">
+                    <div class="performance-value">{{ performance_data.disk_usage[-1] }}%</div>
+                    <div class="performance-label">磁盘使用率</div>
+                    <div class="progress mt-2">
+                        <div class="progress-bar {% if performance_data.disk_usage[-1] > 80 %}bg-danger{% elif performance_data.disk_usage[-1] > 60 %}bg-warning{% else %}bg-success{% endif %}" 
+                             role="progressbar" 
+                             style="width: {{ performance_data.disk_usage[-1] }}%">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 性能趋势图 -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-chart-line"></i> 性能趋势（过去24小时）</h5>
+        </div>
+        <div class="card-body">
+            <div class="chart-container">
+                <canvas id="performanceChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- 性能数据表格 -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-table"></i> 详细数据</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>时间</th>
+                            <th>CPU使用率</th>
+                            <th>内存使用率</th>
+                            <th>磁盘使用率</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for i in range(performance_data.timestamps|length) %}
+                        <tr>
+                            <td>{{ performance_data.timestamps[i] }}</td>
+                            <td>
+                                <span class="badge {% if performance_data.cpu_usage[i] > 80 %}bg-danger{% elif performance_data.cpu_usage[i] > 60 %}bg-warning{% else %}bg-success{% endif %}">
+                                    {{ performance_data.cpu_usage[i] }}%
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge {% if performance_data.memory_usage[i] > 80 %}bg-danger{% elif performance_data.memory_usage[i] > 60 %}bg-warning{% else %}bg-success{% endif %}">
+                                    {{ performance_data.memory_usage[i] }}%
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge {% if performance_data.disk_usage[i] > 80 %}bg-danger{% elif performance_data.disk_usage[i] > 60 %}bg-warning{% else %}bg-success{% endif %}">
+                                    {{ performance_data.disk_usage[i] }}%
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var ctx = document.getElementById('performanceChart').getContext('2d');
+    var performanceChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: {{ performance_data.timestamps|tojson }},
+            datasets: [{
+                label: 'CPU使用率',
+                data: {{ performance_data.cpu_usage|tojson }},
+                borderColor: '#0d6efd',
+                backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                tension: 0.4,
+                fill: true
+            }, {
+                label: '内存使用率',
+                data: {{ performance_data.memory_usage|tojson }},
+                borderColor: '#198754',
+                backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                tension: 0.4,
+                fill: true
+            }, {
+                label: '磁盘使用率',
+                data: {{ performance_data.disk_usage|tojson }},
+                borderColor: '#ffc107',
+                backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %} 

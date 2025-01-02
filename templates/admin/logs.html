@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 顶部导航栏 -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-list-alt me-2"></i>系统日志</h2>
+        <div class="btn-group">
+            <button type="button" class="btn btn-outline-primary" onclick="window.location.href='{{ url_for('system_monitor') }}'">
+                <i class="fas fa-arrow-left me-1"></i>返回监控
+            </button>
+            <button type="button" class="btn btn-outline-success" onclick="exportLogs()">
+                <i class="fas fa-file-excel me-1"></i>导出日志
+            </button>
+        </div>
+    </div>
+
+    <!-- 过滤器 -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form id="filterForm" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">日志类型</label>
+                    <select name="type" class="form-select" onchange="this.form.submit()">
+                        <option value="ALL" {% if log_type == 'ALL' %}selected{% endif %}>全部</option>
+                        <option value="SYSTEM" {% if log_type == 'SYSTEM' %}selected{% endif %}>系统</option>
+                        <option value="SECURITY" {% if log_type == 'SECURITY' %}selected{% endif %}>安全</option>
+                        <option value="USER" {% if log_type == 'USER' %}selected{% endif %}>用户</option>
+                        <option value="PERFORMANCE" {% if log_type == 'PERFORMANCE' %}selected{% endif %}>性能</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">开始日期</label>
+                    <input type="date" class="form-control" id="start_date" name="start_date">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">结束日期</label>
+                    <input type="date" class="form-control" id="end_date" name="end_date">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="submit" class="btn btn-primary d-block w-100">
+                        <i class="fas fa-search me-1"></i>筛选
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 日志列表 -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>时间</th>
+                            <th>级别</th>
+                            <th>类别</th>
+                            <th>消息</th>
+                            <th>详情</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs.items %}
+                        <tr>
+                            <td>{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                            <td>
+                                <span class="badge bg-{{ 'danger' if log.level == 'ERROR' else 'warning' if log.level == 'WARNING' else 'info' }}">
+                                    {{ log.level }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">{{ log.category }}</span>
+                            </td>
+                            <td>{{ log.message }}</td>
+                            <td>
+                                {% if log.details %}
+                                <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#detailsModal{{ log.id }}">
+                                    <i class="fas fa-info-circle"></i>
+                                </button>
+                                <!-- 详情模态框 -->
+                                <div class="modal fade" id="detailsModal{{ log.id }}" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">日志详情</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <pre class="bg-light p-3 rounded"><code>{{ log.details }}</code></pre>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 分页 -->
+            {% if logs.pages > 1 %}
+            <nav class="mt-4">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item {{ 'disabled' if logs.page == 1 }}">
+                        <a class="page-link" href="{{ url_for('system_logs', page=logs.prev_num, type=log_type) if logs.has_prev else '#' }}">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% for page in range(max(1, logs.page - 2), min(logs.pages + 1, logs.page + 3)) %}
+                    <li class="page-item {{ 'active' if page == logs.page }}">
+                        <a class="page-link" href="{{ url_for('system_logs', page=page, type=log_type) }}">{{ page }}</a>
+                    </li>
+                    {% endfor %}
+                    <li class="page-item {{ 'disabled' if logs.page == logs.pages }}">
+                        <a class="page-link" href="{{ url_for('system_logs', page=logs.next_num, type=log_type) if logs.has_next else '#' }}">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function exportLogs() {
+    const startDate = document.getElementById('start_date').value;
+    const endDate = document.getElementById('end_date').value;
+    const type = document.querySelector('select[name="type"]').value;
+    
+    let url = '{{ url_for("export_logs") }}?type=' + type;
+    if (startDate) url += '&start_date=' + startDate;
+    if (endDate) url += '&end_date=' + endDate;
+    
+    window.location.href = url;
+}
+
+// 设置日期选择器的默认值为当前月份
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    
+    document.getElementById('start_date').value = firstDay.toISOString().split('T')[0];
+    document.getElementById('end_date').value = today.toISOString().split('T')[0];
+});
+</script>
+{% endblock %} 

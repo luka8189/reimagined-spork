@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <i class="fas fa-user-circle me-2"></i>账户详情
+        </h2>
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i>返回
+        </a>
+    </div>
+
+    <!-- 账户基本信息 -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">账户信息</h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>用户名：</strong> {{ admin.username }}</p>
+                    <p><strong>店铺名称：</strong> {{ admin.store_name }}</p>
+                    <p><strong>邮箱：</strong> {{ admin.email or '未设置' }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>创建时间：</strong> {{ admin.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                    <p><strong>最后登录：</strong> {{ admin.last_login.strftime('%Y-%m-%d %H:%M:%S') if admin.last_login else '从未登录' }}</p>
+                    <p><strong>账户状态：</strong> <span class="badge {% if admin.is_active %}badge-success{% else %}badge-danger{% endif %}">{{ '启用' if admin.is_active else '禁用' }}</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 员工信息 -->
+    <div class="card mb-4">
+        <div class="card-header bg-success text-white">
+            <h4 class="mb-0">员工信息</h4>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>工号</th>
+                            <th>姓名</th>
+                            <th>职位</th>
+                            <th>考勤率</th>
+                            <th>未还借款</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for employee in employees %}
+                        <tr>
+                            <td>{{ employee.id }}</td>
+                            <td>{{ employee.name }}</td>
+                            <td>{{ employee.position }}</td>
+                            <td>{{ employee.attendance_rate }}%</td>
+                            <td>¥{{ "%.2f"|format(employee.unpaid_loans) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 操作日志 -->
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            <h4 class="mb-0">操作日志</h4>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>时间</th>
+                            <th>操作类型</th>
+                            <th>详情</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in activity_logs %}
+                        <tr>
+                            <td>{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                            <td>{{ log.action_type }}</td>
+                            <td>{{ log.details }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 统计图表 -->
+    <div class="card">
+        <div class="card-header bg-warning text-dark">
+            <h4 class="mb-0">数据统计</h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <canvas id="employeeChart"></canvas>
+                </div>
+                <div class="col-md-6">
+                    <canvas id="attendanceChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 图表脚本 -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // 员工职位分布图
+    const employeeCtx = document.getElementById('employeeChart').getContext('2d');
+    new Chart(employeeCtx, {
+        type: 'pie',
+        data: {
+            labels: {{ position_labels|tojson }},
+            datasets: [{
+                data: {{ position_counts|tojson }},
+                backgroundColor: [
+                    '#FF6384',
+                    '#36A2EB',
+                    '#FFCE56',
+                    '#4BC0C0',
+                    '#9966FF'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: '员工职位分布'
+                }
+            }
+        }
+    });
+
+    // 考勤趋势图
+    const attendanceCtx = document.getElementById('attendanceChart').getContext('2d');
+    new Chart(attendanceCtx, {
+        type: 'line',
+        data: {
+            labels: {{ attendance_dates|tojson }},
+            datasets: [{
+                label: '考勤率',
+                data: {{ attendance_rates|tojson }},
+                borderColor: '#36A2EB',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: '考勤率趋势'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100
+                }
+            }
+        }
+    });
+</script>
+{% endblock %} 
