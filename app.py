@@ -55,6 +55,7 @@ class Admin(db.Model):
 # 员工模型
 class Employee(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    employee_number = db.Column(db.String(20), unique=True)
     name = db.Column(db.String(100), nullable=False)
     position = db.Column(db.String(100))
     admin_id = db.Column(db.Integer, db.ForeignKey('admin.id'), nullable=False)
@@ -1564,11 +1565,37 @@ def edit_admin(admin_id):
     
     return render_template('admin/edit_admin.html', admin=admin)
 
+@app.route('/salary_settlements')
+@login_required
+def salary_settlement_list():
+    # 获取当前登录的管理员
+    username = session.get('username')
+    is_super_admin = session.get('is_super_admin', False)
+    
+    if is_super_admin:
+        # 超级管理员可以看到所有员工
+        employees = Employee.query.all()
+    else:
+        # 普通管理员只能看到自己的员工
+        admin = Admin.query.filter_by(username=username).first()
+        if not admin:
+            flash('账户异常，请重新登录')
+            return redirect(url_for('logout'))
+        employees = Employee.query.filter_by(admin_id=admin.id).all()
+    
+    # 获取所有工资结算记录
+    settlements = SalarySettlement.query.join(Employee).filter(
+        Employee.id.in_([emp.id for emp in employees])
+    ).order_by(SalarySettlement.settlement_date.desc()).all()
+    
+    return render_template('salary_settlements.html',
+                         employees=employees,
+                         settlements=settlements)
+
 if __name__ == '__main__':
+    print("Current directory:", os.getcwd())
+    print("Template directory:", app.template_folder)
     with app.app_context():
-        # 只在数据库不存在时创建表
         db.create_all()
-    app.run(debug=True)
-print("Current directory:", os.getcwd())
-print("Template directory:", app.template_folder) 
+    app.run(host='0.0.0.0', port=5000, debug=True)
 

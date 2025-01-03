@@ -249,36 +249,22 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <div class="btn-group">
-                                    <a href="{{ url_for('attendance', employee_id=employee.id) }}" 
-                                       class="btn btn-sm btn-outline-primary" 
-                                       data-bs-toggle="tooltip" 
-                                       title="考勤记录">
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('attendance', employee_id=employee.id) }}" class="btn btn-info" title="考勤记录">
                                         <i class="fas fa-calendar-check"></i>
                                     </a>
-                                    <a href="{{ url_for('loan', employee_id=employee.id) }}" 
-                                       class="btn btn-sm btn-outline-success"
-                                       data-bs-toggle="tooltip" 
-                                       title="借款记录">
+                                    <a href="{{ url_for('loan', employee_id=employee.id) }}" class="btn btn-warning" title="借款记录">
+                                        <i class="fas fa-hand-holding-usd"></i>
+                                    </a>
+                                    <a href="{{ url_for('salary_settlement', employee_id=employee.id) }}" class="btn btn-success" title="工资结算">
                                         <i class="fas fa-money-bill-wave"></i>
                                     </a>
-                                    <a href="{{ url_for('edit_employee', employee_id=employee.id) }}" 
-                                       class="btn btn-sm btn-outline-warning"
-                                       data-bs-toggle="tooltip" 
-                                       title="编辑资料">
+                                    <a href="{{ url_for('edit_employee', employee_id=employee.id) }}" class="btn btn-primary" title="编辑">
                                         <i class="fas fa-edit"></i>
                                     </a>
-                                    <form action="{{ url_for('delete_employee', employee_id=employee.id) }}" 
-                                          method="post" 
-                                          class="d-inline"
-                                          onsubmit="return confirm('确定要删除此员工吗？')">
-                                        <button type="submit" 
-                                                class="btn btn-sm btn-outline-danger"
-                                                data-bs-toggle="tooltip" 
-                                                title="删除员工">
-                                            <i class="fas fa-trash-alt"></i>
-                                        </button>
-                                    </form>
+                                    <button type="button" class="btn btn-danger" onclick="confirmDelete({{ employee.id }}, '{{ employee.name }}')" title="删除">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
                                 </div>
                             </td>
                         </tr>

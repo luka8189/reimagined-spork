@@ -218,6 +218,11 @@
                     <i class="fas fa-umbrella-beach me-2"></i>假期管理
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'salary_settlement_list' %}active{% endif %}" href="{{ url_for('salary_settlement_list') }}">
+                    <i class="fas fa-money-bill-wave me-2"></i>工资结算
+                </a>
+            </li>
             <li class="nav-item mt-auto">
                 <a class="nav-link" href="{{ url_for('logout') }}">
                     <i class="fas fa-sign-out-alt me-2"></i>退出登录

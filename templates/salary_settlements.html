@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">工资结算记录</h2>
+    
+    <!-- 员工列表 -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">员工列表</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {% for employee in employees %}
+                <div class="col-md-4 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ employee.name }}</h5>
+                            <p class="card-text">
+                                <small class="text-muted">职位：{{ employee.position or '未设置' }}</small>
+                            </p>
+                            <a href="{{ url_for('salary_settlement', employee_id=employee.id) }}" class="btn btn-primary">
+                                <i class="fas fa-money-bill-wave me-2"></i>结算工资
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 结算记录 -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">结算历史</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>员工</th>
+                            <th>结算期间</th>
+                            <th>金额</th>
+                            <th>结算日期</th>
+                            <th>备注</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for settlement in settlements %}
+                        <tr>
+                            <td>{{ settlement.employee.name }}</td>
+                            <td>{{ settlement.start_date.strftime('%Y-%m-%d') }} 至 {{ settlement.end_date.strftime('%Y-%m-%d') }}</td>
+                            <td>¥{{ "%.2f"|format(settlement.amount) }}</td>
+                            <td>{{ settlement.settlement_date.strftime('%Y-%m-%d') }}</td>
+                            <td>{{ settlement.note or '' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center">暂无结算记录</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
